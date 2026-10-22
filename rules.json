@@ -1,0 +1,345 @@
+{
+  "schema_version": 1,
+  "revision": "2026-10-22.1",
+  "verified_at": "2026-10-22",
+  "sources": {
+    "node": "https://nodejs.org/en/blog/vulnerability/october-2026-security-releases",
+    "php": "https://www.php.net/archive/2026.php",
+    "nginx": "https://nginx.org/en/security_advisories.html",
+    "tomcat": "https://tomcat.apache.org/security-11.html",
+    "go": "https://pkg.go.dev/vuln/GO-2026-6809",
+    "litellm": "https://docs.litellm.ai/blog/security-incident-oct-21-2026",
+    "webpki-roots": "https://rustsec.org/advisories/RUSTSEC-2026-0381.html",
+    "rustls-webpki": "https://rustsec.org/advisories/RUSTSEC-2026-0382.html",
+    "webpki-root-certs": "https://rustsec.org/advisories/RUSTSEC-2026-0383.html"
+  },
+  "policies": {
+    "node": {
+      "strategy": "branches",
+      "branches": {
+        "22": "22.23.4",
+        "24": "24.22.1",
+        "26": "26.12.1"
+      },
+      "branch_parts": 1
+    },
+    "php": {
+      "strategy": "branches",
+      "branches": {
+        "8.2": "8.2.35",
+        "8.3": "8.3.36",
+        "8.4": "8.4.27",
+        "8.5": "8.5.12"
+      },
+      "branch_parts": 2
+    },
+    "tomcat": {
+      "strategy": "branches",
+      "branches": {
+        "9.0": "9.0.123",
+        "10.1": "10.1.61",
+        "11.0": "11.0.27"
+      },
+      "branch_parts": 2
+    },
+    "nginx": {
+      "strategy": "ranges",
+      "ceiling": "1.31.999999",
+      "fixes": {
+        "1.30": "1.30.6",
+        "1.31": "1.31.7"
+      }
+    },
+    "go": {
+      "strategy": "ranges",
+      "ceiling": "1.27.999999"
+    },
+    "rustls-webpki": {
+      "strategy": "webpki"
+    },
+    "webpki-roots": {
+      "strategy": "roots"
+    },
+    "webpki-root-certs": {
+      "strategy": "roots"
+    },
+    "litellm": {
+      "strategy": "supply_chain",
+      "bad_digests": [
+        "sha256:1bbcb1443bc962e45f5aad53fe3d2c30600e0379715fb6c664cdd3ac126c339e"
+      ]
+    }
+  },
+  "rules": [
+    {
+      "id": "CVE-2026-111497",
+      "component": "node",
+      "severity": "high",
+      "title": "Brotli 解码越界写，可导致 RCE",
+      "condition": "brotli_untrusted",
+      "precondition": "不可信数据进入 Brotli 解码器；包含请求体中间件和客户端响应解压路径。",
+      "action": "升级所在分支；排查入站和出站解码路径。仅关闭响应压缩不能证明完成修复。"
+    },
+    {
+      "id": "CVE-2026-105482",
+      "component": "node",
+      "severity": "high",
+      "title": "dns.resolve 含 NUL 名称截断",
+      "condition": "user_controlled_dns",
+      "precondition": "不可信主机名进入受影响 DNS API；SSRF 还取决于业务校验与连接路径。",
+      "action": "升级运行时，并统一地址校验和实际解析使用的输入。"
+    },
+    {
+      "id": "CVE-2026-105483",
+      "component": "node",
+      "severity": "high",
+      "title": "全角数字 IP 的 TLS 主机名校验绕过",
+      "branches": [
+        "24",
+        "26"
+      ],
+      "condition": "untrusted_tls_host",
+      "precondition": "作为 TLS 客户端连接相应非规范 IP 主机名。",
+      "action": "升级所在分支；检查出站请求、代理和抓取服务。"
+    },
+    {
+      "id": "CVE-2026-106069",
+      "component": "node",
+      "severity": "high",
+      "title": "宽松 IP 解析导致 TLS 主机名校验绕过",
+      "condition": "untrusted_tls_host",
+      "precondition": "作为 TLS 客户端连接可宽松解释为 IP 的主机名。",
+      "action": "升级运行时；不要关闭证书验证作为绕过措施。"
+    },
+    {
+      "id": "CVE-2026-105481",
+      "component": "node",
+      "severity": "medium",
+      "title": "keep-alive 客户端提前响应混淆",
+      "condition": "http_client_keepalive",
+      "precondition": "HTTP 客户端复用连接并处理提前到达的响应。",
+      "action": "升级运行时并排查客户端连接池。"
+    },
+    {
+      "id": "CVE-2026-106072",
+      "component": "node",
+      "severity": "medium",
+      "title": "非规范 IPv4 的 TLS 证书校验不当",
+      "condition": "untrusted_tls_host",
+      "precondition": "TLS 客户端使用非规范 IPv4 主机名。",
+      "action": "升级运行时并核对地址规范化逻辑。"
+    },
+    {
+      "id": "CVE-2026-106074",
+      "component": "node",
+      "severity": "medium",
+      "title": "快照或 SEA 保存随机数熵缓存",
+      "condition": "snapshot_entropy_cache",
+      "precondition": "用户启动快照或 SEA 捕获已填充的随机数缓存；普通启动不能据此认定重复。",
+      "action": "升级构建工具链并重新生成、发布快照或 SEA。"
+    },
+    {
+      "id": "CVE-2026-106070",
+      "component": "node",
+      "severity": "low",
+      "title": "ZIP 头验证失败后返回攻击者可控前缀",
+      "branches": [
+        "26"
+      ],
+      "condition": "untrusted_zip",
+      "precondition": "使用 Node ZipFile 处理不可信 ZIP。",
+      "action": "升级 26.x，并检查 ZIP 处理路径。"
+    },
+    {
+      "id": "CVE-2026-106071",
+      "component": "node",
+      "severity": "low",
+      "title": "Permission Model 通配 radix 过授权",
+      "branches": [
+        "26"
+      ],
+      "condition": "permission_model",
+      "precondition": "启用 Permission Model 并使用相关文件权限通配规则。",
+      "action": "升级 26.x；复核允许访问的文件路径。"
+    },
+    {
+      "id": "CVE-2026-106073",
+      "component": "node",
+      "severity": "low",
+      "title": "fs.realpathSync 绕过 Permission Model",
+      "condition": "permission_model",
+      "precondition": "依赖 Permission Model 隔离文件访问。",
+      "action": "升级所在分支；该条影响 22、24、26。"
+    },
+    {
+      "id": "CVE-2026-109618",
+      "component": "php",
+      "severity": "critical",
+      "title": "OOM 部分初始化状态破坏，可导致未认证 RCE",
+      "condition": "serves_web",
+      "precondition": "处理 Web 请求；mod_php 为官方指出的最高风险路径。",
+      "action": "升级安全包并重启相应 worker；没有完整的配置替代修复方案。"
+    },
+    {
+      "id": "CVE-2026-109619",
+      "component": "php",
+      "severity": "critical",
+      "title": "跨请求残留全局状态，可导致未认证 RCE",
+      "condition": "serves_web",
+      "precondition": "请求内部状态释放后仍被复用；Web 请求处理路径需更新。",
+      "action": "升级安全包并重启 worker。仅更新命令行 PHP 不证明 FPM 已更新。"
+    },
+    {
+      "id": "CVE-2026-15176",
+      "component": "nginx",
+      "severity": "medium",
+      "title": "alias 与 rewrite 组合时缓冲区溢出",
+      "ranges": [
+        [
+          "0.1.29",
+          "1.31.7"
+        ]
+      ],
+      "condition": "nginx_alias_rewrite",
+      "precondition": "相关 alias、rewrite 及 URI 到文件路径映射；同文件共现仅为线索。",
+      "action": "升级 1.30.6 / 1.31.7 或供应商安全包；复核具体 location。"
+    },
+    {
+      "id": "CVE-2026-93479",
+      "component": "nginx",
+      "severity": "medium",
+      "title": "含变量的脚本表达式求值溢出",
+      "ranges": [
+        [
+          "1.30.0",
+          "1.30.6"
+        ],
+        [
+          "1.31.2",
+          "1.31.7"
+        ]
+      ],
+      "condition": "nginx_variable_expression",
+      "precondition": "http 或 stream 中相关字符串表达式求值。",
+      "action": "升级 1.30.6 / 1.31.7 或供应商安全包。"
+    },
+    {
+      "id": "CVE-2026-97205",
+      "component": "nginx",
+      "severity": "medium",
+      "title": "AIO 与 SSI 路径中的释放后使用",
+      "ranges": [
+        [
+          "0.8.11",
+          "1.31.7"
+        ]
+      ],
+      "condition": "nginx_aio_ssi",
+      "precondition": "AIO 与 SSI include virtual 等相关处理路径。",
+      "action": "升级并检查 AIO、SSI 的有效配置；静态共现不证明可利用。"
+    },
+    {
+      "id": "CVE-2026-95101",
+      "component": "nginx",
+      "severity": "medium",
+      "title": "HTTP/3 请求体注入",
+      "ranges": [
+        [
+          "1.25.0",
+          "1.31.7"
+        ]
+      ],
+      "condition": "nginx_http3",
+      "precondition": "使用 HTTP/3 模块及相关请求处理路径。",
+      "action": "升级安全包；核对 HTTP/3 是否在真实入口启用。"
+    },
+    {
+      "id": "CVE-2026-97629",
+      "component": "nginx",
+      "severity": "medium",
+      "title": "TLS 会话票据轮换时会话伪造",
+      "ranges": [
+        [
+          "1.23.2",
+          "1.31.7"
+        ]
+      ],
+      "condition": "nginx_session_ticket_rotation",
+      "precondition": "使用 TLS 会话票据密钥轮换。",
+      "action": "升级并核对票据密钥轮换的有效配置。"
+    },
+    {
+      "id": "CVE-2026-101296",
+      "component": "tomcat",
+      "severity": "important",
+      "title": "JNDIRealm 非 GSSAPI SASL 认证绕过",
+      "condition": "tomcat_non_gssapi_sasl",
+      "precondition": "JNDIRealm 使用非 GSSAPI 的 SASL 机制；不是全部 Tomcat 登录路径。",
+      "action": "升级 9.0.123 / 10.1.61 / 11.0.27 或供应商安全包。",
+      "priority": "high"
+    },
+    {
+      "id": "CVE-2026-111943",
+      "component": "go",
+      "severity": "unscored",
+      "priority": "high",
+      "title": "crypto/x509 对已失信中间 CA 的紧急拒绝处理",
+      "ranges": [
+        [
+          "0.0.0",
+          "1.26.10"
+        ],
+        [
+          "1.27.0",
+          "1.27.3"
+        ]
+      ],
+      "condition": "outbound_tls",
+      "precondition": "使用受影响的 crypto/x509 验证链；实际结果还受信任库影响。",
+      "action": "使用 Go 1.26.10 / 1.27.3 或更高受支持修复版重新构建、发布程序。"
+    },
+    {
+      "id": "RUSTSEC-2026-0382",
+      "component": "rustls-webpki",
+      "severity": "unscored",
+      "priority": "high",
+      "title": "证书验证可能接受失信 emSign 中间公钥",
+      "condition": "outbound_tls",
+      "precondition": "配置的信任锚允许构建相关路径。",
+      "action": "稳定分支更新至 0.103.16；0.104 预发布分支至少 alpha.8；重新构建发布。"
+    },
+    {
+      "id": "RUSTSEC-2026-0381",
+      "component": "webpki-roots",
+      "severity": "unscored",
+      "priority": "high",
+      "title": "内置根证书允许信任失信 emSign 中间 CA",
+      "condition": "outbound_tls",
+      "precondition": "使用该包提供的根证书；0.26.11 包装层必须核对其实际 1.x 父依赖。",
+      "action": "更新实际 1.x 根证书依赖至 1.0.10+ 并重新构建。"
+    },
+    {
+      "id": "RUSTSEC-2026-0383",
+      "component": "webpki-root-certs",
+      "severity": "unscored",
+      "priority": "high",
+      "title": "内置根证书允许信任失信 emSign 中间 CA",
+      "condition": "outbound_tls",
+      "precondition": "使用该包提供的根证书；0.26.11 兼容包装层不能单凭版本放行。",
+      "action": "更新实际 1.x 根证书依赖至 1.0.10+ 并重新构建。"
+    },
+    {
+      "id": "INCIDENT-LITELLM-2026-10-21",
+      "component": "litellm",
+      "severity": "incident",
+      "priority": "critical",
+      "title": "LiteLLM 1.107.0 发布制品投毒事件",
+      "condition": "executed",
+      "precondition": "命中恶意 wheel 或镜像；锁定版本或官方源码 tag 本身不证明执行过恶意制品。",
+      "action": "若安装或运行受影响制品，隔离、保全证据、可信重建，从干净环境轮换可访问凭据。不要先在污染环境启动 Python/pip。"
+    }
+  ],
+  "supplemental_sources": {
+    "litellm_indicators": "https://github.com/BerriAI/litellm/issues/47826"
+  }
+}

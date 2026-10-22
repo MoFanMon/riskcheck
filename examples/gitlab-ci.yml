@@ -1,0 +1,16 @@
+# Merge into your existing pipeline. The trusted runner must already have Python 3.9+.
+# Put riskcheck.py and rules.json under tools/riskcheck/ in your repository.
+event-risk-check:
+  script:
+    - >-
+      python3 -I -S tools/riskcheck/riskcheck.py
+      --root .
+      --inventory ci/assets.json
+      --require node
+      --format json
+      --output risk-report.json
+  artifacts:
+    when: always
+    paths:
+      - risk-report.json
+  allow_failure: false

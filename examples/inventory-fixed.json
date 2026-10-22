@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "required_components": ["node", "php", "nginx", "tomcat", "go"],
+  "assets": [
+    {"id": "DEMO-node-api", "component": "node", "version": "24.22.1", "kind": "runtime"},
+    {"id": "DEMO-php-fpm", "component": "php", "version": "8.3.36", "kind": "runtime"},
+    {"id": "DEMO-nginx-edge", "component": "nginx", "version": "1.30.6", "kind": "runtime"},
+    {"id": "DEMO-tomcat", "component": "tomcat", "version": "10.1.61", "kind": "runtime"},
+    {"id": "DEMO-go-build", "component": "go", "version": "1.27.3", "kind": "runtime"},
+    {"id": "DEMO-rust-verifier", "component": "rustls-webpki", "version": "0.103.16", "kind": "locked"},
+    {"id": "DEMO-rust-roots", "component": "webpki-roots", "version": "1.0.10", "kind": "locked"}
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "assets": [
+    {
+      "id": "DEMO-vendor-backport-attestation",
+      "component": "php",
+      "version": "8.3.6-0ubuntu0.24.04.13",
+      "kind": "runtime",
+      "vendor_fixes": [
+        {"rule_id": "CVE-2026-109618", "reference": "https://ubuntu.com/security/notices/USN-8948-1"},
+        {"rule_id": "CVE-2026-109619", "reference": "https://ubuntu.com/security/notices/USN-8948-1"}
+      ]
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "required_components": ["node", "php", "nginx", "tomcat", "go"],
+  "assets": [
+    {"id": "DEMO-node-api", "component": "node", "version": "24.22.0", "kind": "runtime", "context": {"brotli_untrusted": true}},
+    {"id": "DEMO-php-fpm", "component": "php", "version": "8.3.35", "kind": "runtime", "context": {"serves_web": true}},
+    {"id": "DEMO-nginx-edge", "component": "nginx", "version": "1.30.5", "kind": "runtime", "context": {"nginx_http3": true}},
+    {"id": "DEMO-tomcat", "component": "tomcat", "version": "10.1.60", "kind": "runtime", "context": {"tomcat_non_gssapi_sasl": true}},
+    {"id": "DEMO-go-build", "component": "go", "version": "1.27.2", "kind": "runtime"},
+    {"id": "DEMO-rust-verifier", "component": "rustls-webpki", "version": "0.103.15", "kind": "locked"},
+    {"id": "DEMO-rust-roots", "component": "webpki-roots", "version": "1.0.9", "kind": "locked"},
+    {"id": "DEMO-current-litellm", "component": "litellm", "version": "1.106.2", "kind": "installed"},
+    {"id": "DEMO-history-litellm", "component": "litellm", "version": "1.107.0", "kind": "historical", "context": {"executed": true}}
+  ]
+}
