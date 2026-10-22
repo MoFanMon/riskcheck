@@ -2,12 +2,14 @@
 
 import importlib.util
 import inspect
+import io
 import json
 import subprocess
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 BASE = Path(__file__).resolve().parents[1]
 SCRIPT = BASE / "riskcheck.py"
@@ -294,7 +296,7 @@ class RiskCheckTests(unittest.TestCase):
             root = Path(tmp)
             (root / ".nvmrc").write_text("24.22.1\n")
             rules = root / "custom-rules.json"
-            document = json.loads((BASE / "riskcheck_data/rules.json").read_text())
+            document = json.loads((BASE / "riskcheck_data/rules.json").read_text(encoding="utf-8"))
             document["rules"] = []
             rules.write_text(json.dumps(document))
             p = subprocess.run(
@@ -312,6 +314,7 @@ class RiskCheckTests(unittest.TestCase):
                 ],
                 capture_output=True,
                 text=True,
+                encoding="utf-8",
                 timeout=10,
             )
             self.assertEqual(p.returncode, 2)
@@ -455,11 +458,27 @@ class RiskCheckTests(unittest.TestCase):
                 ],
                 capture_output=True,
                 text=True,
+                encoding="utf-8",
                 timeout=10,
             )
             self.assertEqual(p.returncode, 1, p.stderr)
             result = json.loads(p.stdout)
             self.assertEqual(result["summary"]["gate"], "fail")
+
+    def test_cli_writes_utf8_when_inherited_pipe_uses_a_legacy_encoding(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            (Path(tmp) / ".nvmrc").write_text("24.22.0\n", encoding="utf-8")
+            output = io.BytesIO()
+            errors = io.BytesIO()
+            stdout = io.TextIOWrapper(output, encoding="cp1252")
+            stderr = io.TextIOWrapper(errors, encoding="cp1252", errors="backslashreplace")
+            with patch.object(sys, "stdout", stdout), patch.object(sys, "stderr", stderr):
+                code = rc.main(["--root", tmp, "--as-of", "2026-10-22", "--format", "json"])
+                stdout.flush()
+                stderr.flush()
+            self.assertEqual(code, 1, errors.getvalue())
+            report = json.loads(output.getvalue().decode("utf-8"))
+            self.assertEqual(report["summary"]["gate"], "fail")
 
 
 if __name__ == "__main__":

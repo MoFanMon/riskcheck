@@ -883,6 +883,11 @@ def render_html(report):
 
 
 def main(argv=None):
+    # Reports use UTF-8 on terminals and pipes, including legacy Windows locales.
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if callable(reconfigure):
+            reconfigure(encoding="utf-8", errors="backslashreplace")
     parser = argparse.ArgumentParser(
         description="离线版本、依赖和配置检查；不运行目标代码，不连接网络。"
     )

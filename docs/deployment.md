@@ -59,7 +59,7 @@ Windows 对应路径为 `.venv-riskcheck\Scripts\python.exe` 和 `riskcheck.exe`
 
 ## Docker：只读目标、禁网运行
 
-仓库提供 Dockerfile。构建需取得官方 Python 基础镜像；运行检测时可禁网。当前本地环境无 Docker，容器构建交由仓库 CI 验证。
+仓库提供 Dockerfile。构建需取得官方 Python 基础镜像；运行检测时可禁网。仓库 CI 验证容器的构建和只读、禁网运行。
 
 ```sh
 docker build -t riskcheck:0.1.0 .
@@ -81,7 +81,7 @@ docker run --rm --network none --read-only --cap-drop ALL --security-opt no-new-
 python3 -I -S riskcheck.py --root . --inventory ci/assets.json --require node --format json --output risk-report.json
 ```
 
-退出 1 和 2 都应阻断，任务失败时仍保存报告。参考 [GitHub Actions](../examples/github-actions.yml) 与 [GitLab](../examples/gitlab-ci.yml)。扫描离线不代表 CI 的 checkout 和报告上传离线；隔离网络应预分发工具和清单。生产报告包含资产标识、路径，应作为内部资料保存，不提交到本公开仓库。
+标准输出、标准错误和报告文件均使用 UTF-8。退出 1 和 2 都应阻断，任务失败时仍保存报告。参考 [GitHub Actions](../examples/github-actions.yml) 与 [GitLab](../examples/gitlab-ci.yml)。扫描离线不代表 CI 的 checkout 和报告上传离线；隔离网络应预分发工具和清单。生产报告包含资产标识、路径，应作为内部资料保存，不提交到本公开仓库。
 
 - 更新工具：下载、校验新 Release，再替换文件；工具版本和规则 revision 分开管理。
 - 退出 2：检查 gaps、unknown、日期、权限和实际组件版本；不要仅调大时效取得通过。

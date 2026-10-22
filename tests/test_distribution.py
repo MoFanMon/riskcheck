@@ -32,6 +32,7 @@ class DistributionTests(unittest.TestCase):
             [sys.executable, "-I", "-S", str(BASE / "riskcheck.py"), "--version"],
             capture_output=True,
             text=True,
+            encoding="utf-8",
             timeout=10,
         )
         self.assertEqual(result.returncode, 0, result.stderr)
@@ -63,6 +64,7 @@ class DistributionTests(unittest.TestCase):
                 cwd=target,
                 capture_output=True,
                 text=True,
+                encoding="utf-8",
                 timeout=10,
             )
             self.assertEqual(result.returncode, 0, result.stderr)
@@ -85,6 +87,7 @@ class DistributionTests(unittest.TestCase):
                 ],
                 capture_output=True,
                 text=True,
+                encoding="utf-8",
                 timeout=10,
             )
             self.assertEqual(bad.returncode, 2)
@@ -129,6 +132,7 @@ class DistributionTests(unittest.TestCase):
                 [sys.executable, "-I", "-S", str(script), "--root", temp],
                 capture_output=True,
                 text=True,
+                encoding="utf-8",
                 timeout=10,
             )
             self.assertEqual(result.returncode, 2)
