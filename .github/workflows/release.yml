@@ -1,0 +1,40 @@
+name: Release
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag, e.g. v0.1.0
+        required: true
+        type: string
+permissions:
+  contents: read
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    env:
+      RELEASE_TAG: ${{ inputs.tag }}
+    steps:
+      - name: Validate tag input
+        run: python3 -I -S -c 'import os,re; assert re.fullmatch(r"v\d+\.\d+\.\d+", os.environ["RELEASE_TAG"]), "Expected vX.Y.Z"'
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ inputs.tag }}
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.12'
+      - run: python -I -S -m unittest discover -s tests -v
+      - run: python -I -m pip install -r requirements-dev.txt
+      - run: python -I -m ruff check .
+      - run: python -I -m ruff format --check .
+      - run: python -I -m build --no-isolation
+      - run: python -I -S tools/build_release.py --output dist
+      - name: Confirm tag matches packaged version
+        run: python -I -S -c 'import os, pathlib; assert (pathlib.Path("dist") / ("riskcheck-"+os.environ["RELEASE_TAG"][1:]+".pyz")).is_file(), "Version mismatch"'
+      - name: Upload to existing GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$RELEASE_TAG" dist/* --clobber --repo "$GITHUB_REPOSITORY"

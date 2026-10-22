@@ -1,115 +1,96 @@
-# RiskCheck：2026 年 10 月事件离线检测
+# RiskCheck
 
-Python 3.9+，仅用标准库，无需安装依赖。读取指定目录与显式资产清单，输出文本、JSON 或独立 HTML 报告，可作为 CI 门禁。第一版规则核实日期为 **2026-10-22**，共 **23 条规则**，来源保存在 `rules.json`。
+[![CI](https://github.com/MoFanMon/riskcheck/actions/workflows/ci.yml/badge.svg)](https://github.com/MoFanMon/riskcheck/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue.svg)](pyproject.toml)
 
-这是针对本次事件的版本与证据检查器。没有获得目标系统的真实数据前，示例报告不代表你的机器已被检测。
+**面向运维和 CI 的离线事件风险检测工具。** 读取项目文件与资产版本清单，输出风险依据、证据缺口和修复建议。仅用 Python 标准库，不联网、不安装目标依赖、不执行目标代码。
 
-## 快速开始
+[English](README.en.md) · [下载安装](docs/deployment.md) · [完整用法](docs/usage.md) · [原理说明](docs/design.md) · [版本下载](https://github.com/MoFanMon/riskcheck/releases/latest)
 
-在解压后的 `riskcheck` 目录中运行，解释器应来自干净、可信的系统。`-I -S` 用于隔离 Python 搜索路径并禁用 site 初始化，避免加载目标环境的 `.pth` / `sitecustomize.py`。
+当前版本 **0.1.0**，包含 **2026-10-22 核实的 23 条事件规则**，涉及 Node.js、PHP、nginx、Tomcat、Go、Rust 证书依赖及 LiteLLM 投毒事件。规则是有日期的专项快照，默认超过 30 天即要求复核；它不是实时全量 CVE 扫描服务。
+
+## 它解决什么问题
+
+- 同一轮安全事件涉及多种组件，需要统一检查版本、配置线索和处理建议。
+- CI 不应把“版本未知”“文件读不到”“规则过期”当成安全通过。
+- 受影响版本、可能触发的配置、执行过恶意制品，是不同等级的证据。
+- 厂商回补可能不改变上游版本号；历史 LiteLLM 暴露也不能被当前升级覆盖。
+
+支持项目目录、静态导出的文件系统和显式资产清单。运行中服务的版本由部署系统或操作者提供，不能用锁文件冒充运行态证据。
+
+## 下载安装
+
+推荐从 [Releases](https://github.com/MoFanMon/riskcheck/releases/latest) 下载便携版及 `SHA256SUMS`，在干净系统上校验后执行：
 
 ```sh
-# 演示受影响资产与 LiteLLM 历史暴露：预期退出 1
-python3 -I -S riskcheck.py --root . --inventory-only --inventory examples/inventory.json
-
-# 演示已修复版本：预期退出 0，仅在本次版本规则范围内通过
-python3 -I -S riskcheck.py --root . --inventory-only --inventory examples/inventory-fixed.json
-
-# 实际扫描项目目录，并纳入资产清单；修改为你的真实路径
-python3 -I -S riskcheck.py --root /srv/myapp --inventory /srv/assets.json --require node
-
-# JSON 报告，供 CI 读取；输出文件必须尚不存在
-python3 -I -S riskcheck.py --root /srv/myapp --inventory /srv/assets.json --format json --output risk-report.json
-
-# HTML 报告，无外部字体、脚本或网络资源
-python3 -I -S riskcheck.py --root /srv/myapp --inventory /srv/assets.json --format html --output risk-report.html
+python3 -I -S riskcheck-0.1.0.pyz --version
+python3 -I -S riskcheck-0.1.0.pyz --root /srv/myapp --format json
 ```
 
-报告路径的父目录必须已存在。工具拒绝覆盖现有报告。扫描目标不被修改；只有指定的报告文件会被创建。运行受影响示例返回非零是预期门禁行为，不是脚本故障。
+便携版自带规则，不需要 pip 或第三方包。需要 Python 3.9+；部署优先选择仍由供应商提供安全维护的 Python。
 
-## 检测范围
+从源码运行也不需要安装：
 
-| 对象 | 检查方式 | 主要限制 |
-|---|---|---|
-| Node.js | 清单、`.nvmrc`、`.node-version`、`package.json` 的 `engines.node`、标准基础镜像标签 | 声明版本不等于运行中版本；范围、别名、浮动标签返回待核实 |
-| PHP / nginx / Tomcat | 清单、标准基础镜像标签 | 不执行目标二进制；厂商回补需要逐条声明 |
-| Go | 清单中的构建版本、`golang` 镜像；识别 `go.mod` 的最低要求 | `go.mod`、`toolchain` 声明不能证明产物用哪个编译器构建 |
-| Rust 证书依赖 | `Cargo.lock` 中的 `rustls-webpki`、`webpki-roots`、`webpki-root-certs` | 不推断依赖图；0.26.11 包装层的父依赖需人工核实 |
-| LiteLLM | 清单、`requirements*.txt`、`poetry.lock`、`uv.lock`、官方镜像名、安装元数据 | 版本命中不证明执行过恶意制品；官方源码 tag 与发布 wheel 不等价 |
-| nginx 配置 | `nginx.conf` 及路径含 nginx 的 `.conf` 文件 | 只报告静态线索，不确认 location、继承、模块和真实生效状态 |
-| Tomcat 配置 | `server.xml` 中的 JNDIRealm 及疑似 SASL 设置 | 外部覆盖、变量和实际认证机制需复核 |
-| LiteLLM 文件线索 | 指定目录内的 `cook.pth`、`cook.py`、`sitecustomize.py`、两个公开事件标记文件名 | 普通启动文件也有合法用途；不读取文件内容作恶意判定；缺失不能排除入侵 |
+```sh
+git clone https://github.com/MoFanMon/riskcheck.git
+cd riskcheck
+python3 -I -S riskcheck.py --version
+python3 -I -S riskcheck.py --root . --inventory-only --inventory examples/inventory-fixed.json
+```
 
-TOML 锁文件仅读取标准 `[[package]]` 下单行双引号 `name`、`version` 字段，不是完整 TOML 解释器。无法理解的相关字段、损坏文件、超限、无权读取、符号链接与 nginx include 等均报告缺口，不静默放行。requirements 中环境标记、范围、URL 和引用文件不会被猜测为已解析版本；外部引用需要提供最终锁文件或纳入扫描范围。
+最后一条只检查合成示例资产，预期退出 0。用自己的目录和清单替换它。Release 还提供 wheel、源码 ZIP 和源码 tar.gz；[部署文档](docs/deployment.md) 包含离线安装、Windows、Docker 和 CI 步骤。尚未发布到 PyPI，不要通过同名陌生包安装。
 
-第一版不解析 `package-lock.json`、pnpm/yarn 锁文件来判断 Node 运行时，因为 npm 依赖锁不能证明部署使用的 Node 版本；也不自动展开 Docker Compose、Helm、远程主机、运行中容器。自定义镜像、私有仓库镜像、产物版本请放入资产清单。
+## 实际检测示例
 
-## 资产清单
-
-复制并修改 `examples/inventory.json`。不要直接把演示资产带进真实 CI。每个部署、产物、历史暴露记录应使用独立 `id`；不同记录不会相互覆盖。
+创建 `assets.json`，只放组件信息，不放账号、密钥或业务数据：
 
 ```json
 {
   "schema_version": 1,
   "required_components": ["node"],
   "assets": [
-    {
-      "id": "production-api",
-      "component": "node",
-      "version": "24.22.0",
-      "kind": "runtime",
-      "context": {"brotli_untrusted": true}
-    }
+    {"id": "api", "component": "node", "version": "24.22.0", "kind": "runtime"}
   ]
 }
 ```
 
-- `component`：`node`、`php`、`nginx`、`tomcat`、`go`、`litellm`、三个 Rust 包名。
-- `kind`：`runtime`（清单声明的运行/构建版本）、`installed`、`locked`、`declared`、`historical`；工具还会生成 Go `minimum` 记录。
-- `context`：布尔值，键可从规则的 `condition` 字段查看。它只是你提供的触发场景声明，**false 不会消除受影响版本命中**。
-- `required_components` 或重复的 `--require node --require php`：指定本轮必须获得版本证据的组件。未声明的其他组件不被当作已扫描。
-- `digest`：可提供镜像完整摘要。首版仅内置通告中一条完整公共摘要；其他恶意镜像摘要未录全，不能用未命中排除暴露。
-- `vendor_fixes`：按 `rule_id` 附 HTTPS 厂商安全公告，详见 `inventory-vendor.json`。结果为 `vendor_attested`，不是工具独立确认。必须在审核确认具体包修复后填写，不能当作通用忽略开关；对 LiteLLM 投毒无豁免效果。
+```sh
+python3 -I -S riskcheck.py --root /srv/myapp --inventory assets.json --require node
+python3 -I -S riskcheck.py --root /srv/myapp --inventory assets.json --format json --output risk-report.json
+python3 -I -S riskcheck.py --root /srv/myapp --inventory assets.json --format html --output risk-report.html
+```
 
-`--inventory-only` 只检查清单，不遍历 `--root`。适合由已有 CMDB、构建流水线或人工确认提供精确部署版本的场景。默认目录扫描会把不精确的 `engines`、`go.mod` 等保留为待核实，防止将声明冒充真实产物。
+输出文件不能已存在。HTML 可直接离线打开。只检查部署清单时加 `--inventory-only`。
 
-## 结论和 CI 退出码
-
-| 状态 | 含义 |
-|---|---|
-| `affected` | 版本符合本条规则，需要更新或核实触发条件；不表示已成功利用 |
-| `artifact_match` | 完整摘要命中已知恶意制品；不自动证明制品执行过 |
-| `exposure` | 用户清单记录受影响版本曾安装/运行；不能被当前升级记录覆盖 |
-| `unknown` | 版本范围、厂商后缀、未知分支、最低语言要求等证据不足 |
-| `vendor_attested` | 用户提交了逐条厂商回补声明，允许门禁接受该声明，但报告保留来源与声明性质 |
-| `not_affected` | 仅本条版本规则未命中，不代表整个资产安全 |
-
-| 退出码 | 含义 | CI 处理 |
+| 退出码 | 含义 | CI 行为 |
 |---|---|---|
-| 0 | `pass_scoped`：已提供证据未触发当前阈值，无阻塞缺口 | 在明确范围内通过 |
-| 1 | `fail`：命中 `--fail-on` 阈值及以上的风险 | 阻断 |
-| 2 | `incomplete`：缺失证据、扫描不完整、未知版本、过期规则或输入/输出错误 | 阻断并补证据，不当作通过 |
+| `0` | 给定证据在本次规则和阈值范围内通过 | 允许继续，不代表系统安全 |
+| `1` | 命中风险阈值，默认 high | 阻断并处理风险 |
+| `2` | 未知版本、缺口、规则过期或输入错误 | 阻断并补证据 |
 
-同时存在风险和缺口时，退出 2，报告仍保留全部风险发现。默认阈值 `high`；medium/low 仍写入报告，若要一并阻断使用 `--fail-on medium` 或 `low`。
+medium/low 也会写入报告；用 `--fail-on medium` 或 `low` 调整门禁。真实 CI 不固定 `--as-of`，避免冻结时效判断。
 
-优先级与公告严重度独立保存。Go/Rust 公告未打分项保留 `advisory_severity=unscored`，本工具策略优先级为 high；LiteLLM 是 incident，策略优先级为 critical。Tomcat 的 Important 映射至 high 策略优先级。没有将所有风险数字相加制造总风险分数。
+## 文档
 
-已提供 GitLab job 示例 `examples/gitlab-ci.yml`。其他 CI 也直接使用退出码；配置在任务失败时仍上传报告。示例依赖可信 runner 预装 Python，不在任务中安装目标依赖。若使用独立资产清单模式，在 job 中加 `--inventory-only`。
+| 文档 | 内容 |
+|---|---|
+| [部署与下载](docs/deployment.md) | 便携版、校验、wheel、容器、CI、升级与卸载 |
+| [完整用法](docs/usage.md) | 支持文件、资产清单、参数和状态 |
+| [设计说明](docs/design.md) | 检测流程、信任边界和证据层次 |
+| [规则维护](docs/rules.md) | 官方来源、版本边界、回补与时效 |
+| [开发与发布](docs/development.md) | 测试、格式检查、打包、发布 |
+| [参考项目与取舍](docs/references.md) | 标准化参考及采用原因 |
+| [更新日志](CHANGELOG.md) | 按版本记录变化 |
 
-## 规则维护与运行边界
+## 边界
 
-- 规则库默认超过 30 天就视为证据过期，退出 2。先复核官方公告、范围及新版本，再更新 `verified_at`、`revision` 和边界测试。只改时间戳不能算维护。
-- `--as-of 2026-10-22` 用于复现示例或固定基准测试；真实 CI 通常不要设置，否则会冻结时效检查。
-- `--rules` 可指向审核后的本地 JSON，工具不联网自动下载或更新规则。
-- 本次报告覆盖 Node 的 10 条、PHP 2 条、nginx 5 条、Tomcat 1 条、Go 1 条、Rust 3 条及 LiteLLM 事件 1 条。Node 自带证书更新随相应运行时版本体现；**不检查系统、自定义 CA 文件内容或实际 TLS 阻断效果**。
-- 不导入目标模块，不执行 PHP/Node/Python 项目，不调用 pip、npm、Docker 或目标二进制，不读 `.env` 和凭据配置，不输出配置原文。HTML 转义输入、禁用脚本、无外部资源。命令行报告移除终端控制字符。
-- 默认单文件 8 MiB、文件与目录各最多遍历 30,000 个、目录深度 32。不跟随符号链接。默认跳过 `.git`、`node_modules`、Rust `target` 等目录，具体清单随报告输出；`.venv` 不默认排除，因此可以静态查看其中 LiteLLM 安装元数据。
-- 它不是抗主动篡改的取证平台；如果宿主系统或解释器本身不可信，应从干净系统对只读导出副本检查。未发现线索不证明没有入侵。
+不发送漏洞载荷，不确认可利用性或系统已被入侵，不测试系统 CA 文件的实际 TLS 拦截效果。配置共现仅是线索；`vendor_attested` 是用户提交的厂商修复声明。完整限制随报告输出，见[设计说明](docs/design.md)。
 
-## 测试
+## 开发与开源
 
 ```sh
 python3 -I -S -m unittest discover -s tests -v
 ```
 
-测试使用临时目录和合成资产，覆盖修复边界、预发布/厂商版本、历史暴露、配置线索、XML 实体、HTML 转义、符号链接、坏文件和 CI 门禁，不连接外网。
+贡献前阅读 [CONTRIBUTING.md](CONTRIBUTING.md)，工具自身漏洞按 [SECURITY.md](SECURITY.md) 处理。项目采用 [MIT License](LICENSE)；第三方公告与项目仍遵循各自许可。

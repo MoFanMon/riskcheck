@@ -1,0 +1,67 @@
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {os: ubuntu-latest, python: '3.9'}
+          - {os: ubuntu-latest, python: '3.12'}
+          - {os: ubuntu-latest, python: '3.14'}
+          - {os: windows-latest, python: '3.12'}
+          - {os: macos-latest, python: '3.12'}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: ${{ matrix.python }}
+      - run: python -I -S -m unittest discover -s tests -v
+  package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.12'
+      - run: python -I -m pip install -r requirements-dev.txt
+      - run: python -I -m ruff check .
+      - run: python -I -m ruff format --check .
+      - run: python -I -m build --no-isolation
+      - run: python -I -S tools/build_release.py --output dist
+      - run: python -I -m pip install --no-deps --no-index dist/*.whl
+      - run: python -I -m riskcheck --version
+      - run: python -I -m riskcheck --root . --inventory-only --inventory examples/inventory-fixed.json --as-of 2026-10-22
+      - run: sha256sum -c SHA256SUMS
+        working-directory: dist
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: distribution
+          path: dist/
+  container:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - run: docker build -t riskcheck:test .
+      - run: docker run --rm --network none --read-only --cap-drop ALL riskcheck:test --version
+      - run: >-
+          docker run --rm --network none --read-only --cap-drop ALL
+          -v "$PWD/examples:/examples:ro" riskcheck:test
+          --root /examples --inventory-only --inventory /examples/inventory-fixed.json
+          --as-of 2026-10-22

@@ -1,0 +1,6 @@
+**
+!riskcheck.py
+!riskcheck_data/
+!riskcheck_data/__init__.py
+!riskcheck_data/rules.json
+!Dockerfile

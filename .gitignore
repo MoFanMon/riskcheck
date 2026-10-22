@@ -7,3 +7,9 @@ venv/
 .env.*
 risk-report*.json
 risk-report*.html
+dist/
+build/
+*.egg-info/
+.ruff_cache/
+.coverage
+htmlcov/

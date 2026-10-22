@@ -1,0 +1,17 @@
+name: Rule update / 规则更新
+description: 维护已公开公告的范围、修复版本或证据
+title: "[Rule] "
+body:
+  - type: input
+    id: advisory
+    attributes:
+      label: 公告 ID 与组件
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: 官方/原始研究链接与边界证据
+      description: 说明受影响分支、修复版、当前误差及最小脱敏样例。
+    validations:
+      required: true

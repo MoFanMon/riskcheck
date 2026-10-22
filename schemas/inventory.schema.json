@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/MoFanMon/riskcheck/blob/main/schemas/inventory.schema.json",
+  "title": "RiskCheck asset inventory v1",
+  "type": "object",
+  "required": ["schema_version", "assets"],
+  "properties": {
+    "$schema": {"type": "string"},
+    "schema_version": {"const": 1},
+    "required_components": {"type": "array", "items": {"$ref": "#/$defs/component"}, "uniqueItems": true},
+    "assets": {"type": "array", "items": {"$ref": "#/$defs/asset"}}
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "component": {"enum": ["node", "php", "nginx", "tomcat", "go", "litellm", "rustls-webpki", "webpki-roots", "webpki-root-certs"]},
+    "asset": {
+      "type": "object",
+      "required": ["id", "component"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "component": {"$ref": "#/$defs/component"},
+        "version": {"type": "string"},
+        "kind": {"enum": ["runtime", "installed", "locked", "declared", "historical", "minimum"]},
+        "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+        "context": {"type": "object", "additionalProperties": {"type": "boolean"}},
+        "vendor_fixes": {
+          "type": "array",
+          "items": {"type": "object", "required": ["rule_id", "reference"], "properties": {
+            "rule_id": {"type": "string"},
+            "reference": {"type": "string", "pattern": "^https://"}
+          }, "additionalProperties": false}
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

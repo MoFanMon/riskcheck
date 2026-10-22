@@ -1,0 +1,21 @@
+name: Bug / 误报或漏报
+description: 提交脱敏的最小复现，不包含生产资产或凭据
+title: "[Bug] "
+body:
+  - type: markdown
+    attributes:
+      value: 工具自身安全漏洞请先阅读 SECURITY.md，不要公开敏感细节。
+  - type: input
+    id: version
+    attributes:
+      label: 工具版本与规则 revision
+      placeholder: riskcheck-offline 0.1.0 / 2026-10-22.1
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: 最小脱敏输入、命令与结果
+      description: 包括系统/Python 版本、退出码和期望结果。不要粘贴真实报告或凭据。
+    validations:
+      required: true
